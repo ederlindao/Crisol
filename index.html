@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crisol — Guerra Alquímica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#10161a; --bg-2:#0c1114; --panel:#182027; --panel-2:#1c2530;
+    --line:#2b3742; --line-soft:#212b33; --text:#e7edef; --muted:#8ca0aa; --muted-2:#5f7078;
+    --hp-good:#8bc53f; --hp-mid:#e0c93e; --hp-bad:#e15c4b;
+    --gold:#d9c46a; --gold-bright:#ffe27a;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:radial-gradient(ellipse at 15% -10%, #1a2530 0%, transparent 55%),
+               radial-gradient(ellipse at 100% 0%, #17222a 0%, transparent 45%), var(--bg);
+    color:var(--text); font-family:'IBM Plex Mono', monospace; min-height:100vh; -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{ font-family:'Space Grotesk', sans-serif; }
+  ::selection{ background:#b6e24d; color:#10161a; }
+  a{ color:inherit; }
+
+  .wrap{ max-width:1220px; margin:0 auto; padding:0 20px 64px; }
+
+  .topbar{ border-bottom:1px solid var(--line); padding:22px 20px 18px;
+    background:linear-gradient(180deg, rgba(182,226,77,.04), transparent 70%); }
+  .topbar-inner{ max-width:1220px; margin:0 auto; width:100%; display:flex; flex-wrap:wrap; gap:18px; align-items:flex-end; justify-content:space-between;}
+  .brand h1{ font-size:27px; font-weight:700; margin:0 0 4px; letter-spacing:.2px; }
+  .brand p{ margin:0; color:var(--muted); font-size:13.5px; max-width:52ch; line-height:1.55; }
+
+  .status-cluster{ display:flex; align-items:center; gap:22px; }
+  .status-item{ text-align:right; }
+  .status-item .num{ font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:700; line-height:1; }
+  .status-item .lbl{ display:block; color:var(--muted-2); font-size:11px; margin-top:4px; }
+
+  .cylinder{ position:relative; width:30px; height:56px; border:1px solid var(--line); border-top:none;
+    border-radius:0 0 6px 6px; background:var(--bg-2); overflow:hidden; }
+  .cylinder .fill{ position:absolute; left:0; right:0; bottom:0;
+    background:linear-gradient(180deg, var(--hp-good), #6ba030); transition:height .5s ease, background .5s ease; }
+  .cylinder .ticks{ position:absolute; inset:0;
+    background-image:repeating-linear-gradient(0deg, var(--line-soft) 0 1px, transparent 1px 11px); pointer-events:none; }
+  .cylinder-row{ display:flex; align-items:flex-end; gap:8px; }
+
+  nav.tabs{ display:flex; gap:6px; max-width:1220px; margin:0 auto; padding:0 20px; border-bottom:1px solid var(--line); }
+  nav.tabs button{ appearance:none; border:none; background:none; cursor:pointer; font-family:'Space Grotesk',sans-serif;
+    font-weight:600; font-size:14.5px; color:var(--muted); padding:13px 4px; margin-right:22px; border-bottom:2px solid transparent; }
+  nav.tabs button.active{ color:var(--text); border-bottom-color:#b6e24d; }
+  nav.tabs button:hover{ color:var(--text); }
+
+  main{ padding-top:26px; }
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  .pixel-icon{ image-rendering:pixelated; image-rendering:crisp-edges; width:48px; height:48px;
+    background:var(--bg-2); border:1px solid var(--line-soft); border-radius:3px; flex-shrink:0; }
+  .pixel-icon.legendary{ border-color:var(--gold); box-shadow:0 0 0 1px rgba(255,226,122,.25) inset; }
+  .pixel-icon-mini{ image-rendering:pixelated; width:38px; height:26px; background:var(--bg-2);
+    border:1px solid var(--line-soft); border-radius:2px; }
+  .pixel-icon-enemy{ image-rendering:pixelated; width:150px; height:100px; background:var(--bg-2);
+    border:1px solid var(--line-soft); border-radius:6px; margin:6px auto; display:block; }
+
+  .mat-row{ display:flex; flex-wrap:wrap; gap:5px; margin:6px 0 14px; }
+  .mat-chip{ display:inline-flex; gap:5px; align-items:center; border:1px solid var(--line);
+    border-radius:3px; padding:3px 7px; font-size:11px; background:var(--panel-2); }
+
+  .lab-grid{ display:grid; grid-template-columns:1fr 300px; gap:26px; align-items:start; }
+  @media (max-width:920px){ .lab-grid{ grid-template-columns:1fr; } }
+  .lab-intro{ margin-bottom:14px; max-width:76ch; }
+  .lab-intro h2{ font-size:20px; margin:0 0 6px; }
+  .lab-intro p{ color:var(--muted); font-size:13.5px; line-height:1.6; margin:0 0 6px; }
+
+  .filter-row{ display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 20px; }
+  .filter-row button{ appearance:none; cursor:pointer; background:var(--panel); border:1px solid var(--line);
+    color:var(--muted); font-family:'IBM Plex Mono',monospace; font-size:12px; padding:7px 12px; border-radius:3px; }
+  .filter-row button.active{ color:var(--text); border-color:#b6e24d; background:#1a2119; }
+
+  .catalog{ display:grid; grid-template-columns:repeat(auto-fill,minmax(258px,1fr)); gap:12px; }
+  .card{ border:1px solid var(--line); background:var(--panel); border-radius:4px; padding:14px 14px 12px;
+    display:flex; flex-direction:column; gap:8px; }
+  .card.legendary{ border-color:var(--gold); background:linear-gradient(180deg, rgba(255,226,122,.05), var(--panel) 60%); }
+  .card.locked-card{ align-items:center; text-align:center; color:var(--muted); gap:6px; padding:22px 14px; }
+  .card .tagrow{ display:flex; justify-content:space-between; align-items:center; gap:6px; }
+  .card .type-chip{ font-size:10.5px; color:var(--muted); border:1px solid var(--line-soft); border-radius:2px; padding:2px 6px; }
+  .card .element-chip{ font-size:10.5px; padding:2px 7px; border-radius:2px; font-weight:600; color:#10161a; }
+  .card .head-row{ display:flex; gap:10px; align-items:flex-start; }
+  .card .equation{ font-size:12px; line-height:1.6; color:var(--text); }
+  .card .equation .mut{ color:var(--muted); }
+  .card .weapon-name{ font-family:'Space Grotesk',sans-serif; font-size:14.5px; font-weight:600; margin-top:2px; }
+  .card .power-row{ display:flex; justify-content:space-between; align-items:center; margin-top:2px; }
+  .card .power{ font-size:11.5px; color:var(--muted); }
+  .card .power b{ color:var(--text); }
+  .cost-row{ font-size:11px; color:var(--muted); }
+  .cost-row .ok{ color:#8bc53f; }
+  .cost-row .low{ color:#e15c4b; }
+  .card button.craft-btn{ appearance:none; cursor:pointer; border:1px solid #b6e24d; background:transparent;
+    color:#b6e24d; font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600; padding:7px 10px;
+    border-radius:3px; margin-top:4px; }
+  .card button.craft-btn:hover:not([disabled]){ background:rgba(182,226,77,.1); }
+  .card button.craft-btn[disabled]{ border-color:var(--line); color:var(--muted-2); cursor:default; background:none; }
+  .card.crafted{ border-color:#3a4a37; background:#161d17; }
+
+  .side-panel{ border:1px solid var(--line); background:var(--panel); border-radius:4px; padding:16px; position:sticky; top:16px; }
+  .side-panel h3{ font-size:15px; margin:0 0 4px; }
+  .side-panel .sub{ color:var(--muted); font-size:12px; margin:0 0 10px; }
+  .inv-list{ display:flex; flex-direction:column; gap:8px; max-height:420px; overflow:auto; }
+  .inv-item{ border:1px solid var(--line-soft); border-radius:3px; padding:7px 9px; display:flex; align-items:center; gap:9px; font-size:12px; }
+  .inv-item .nm{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12.5px; }
+  .inv-item .meta{ color:var(--muted-2); font-size:10.5px; margin-top:2px; }
+  .inv-empty{ color:var(--muted-2); font-size:12.5px; line-height:1.6; }
+
+  .arena{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:900px){ .arena{ grid-template-columns:1fr; } }
+  .panel{ border:1px solid var(--line); background:var(--panel); border-radius:4px; padding:18px; }
+  .panel h3{ margin:0 0 2px; font-size:16px; }
+  .enemy-card{ text-align:center; }
+  .enemy-name{ font-family:'Space Grotesk',sans-serif; font-size:19px; font-weight:700; margin:8px 0 0; }
+  .enemy-level{ color:var(--muted-2); font-size:11.5px; margin:2px 0 10px; }
+  .enemy-desc{ color:var(--muted); font-size:12.5px; line-height:1.6; margin:0 0 14px; }
+  .stat-row{ display:flex; justify-content:center; gap:14px; margin-bottom:10px; font-size:11px; color:var(--muted-2); }
+
+  .hbeaker{ position:relative; width:100%; height:20px; border:1px solid var(--line); border-radius:3px;
+    background:var(--bg-2); overflow:hidden; margin-bottom:6px; }
+  .hbeaker .hfill{ position:absolute; inset:0; width:100%; transform-origin:left; transition:width .45s ease, background .45s ease; }
+  .hbeaker.enemy .hfill{ background:linear-gradient(90deg,#c2503f,#e15c4b); }
+  .hbeaker.player .hfill{ background:linear-gradient(90deg,#6ba030,#8bc53f); }
+  .hbeaker .hticks{ position:absolute; inset:0; background-image:repeating-linear-gradient(90deg, var(--line-soft) 0 1px, transparent 1px 10%); pointer-events:none; }
+  .hp-label{ display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-bottom:6px; }
+
+  .weakness-row{ display:flex; align-items:center; justify-content:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+  .weakness-chip{ font-size:12px; padding:5px 10px; border-radius:3px; border:1px dashed var(--line); color:var(--muted); }
+  .weakness-chip.revealed{ border-style:solid; color:#10161a; font-weight:600; }
+  .analyze-btn{ appearance:none; cursor:pointer; border:1px solid var(--line); background:var(--panel-2);
+    color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:6px 10px; border-radius:3px; }
+
+  .banner-lock{ border:1px dashed var(--gold); background:rgba(255,226,122,.06); border-radius:4px;
+    padding:12px 14px; font-size:12.5px; line-height:1.6; color:var(--text); margin-bottom:16px; }
+  .banner-lock b{ color:var(--gold); }
+
+  .target-row{ display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin-bottom:14px; }
+  .target-chip{ appearance:none; cursor:pointer; border:1px solid var(--line-soft); background:var(--panel-2);
+    border-radius:4px; padding:6px 8px; display:flex; flex-direction:column; align-items:center; gap:4px;
+    min-width:66px; color:var(--muted); font-size:9.5px; }
+  .target-chip.active{ border-color:#b6e24d; color:var(--text); }
+  .target-chip .flag{ color:var(--gold); font-size:9px; }
+
+  .rack-title{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;}
+  .rack-title .sub{ color:var(--muted-2); font-size:11px; }
+  .weapon-rack{ display:flex; flex-direction:column; gap:8px; max-height:220px; overflow:auto; margin-bottom:14px; }
+  .rack-btn{ appearance:none; cursor:pointer; text-align:left; width:100%; border:1px solid var(--line-soft);
+    background:var(--panel-2); color:var(--text); border-radius:3px; padding:8px 10px; font-family:'IBM Plex Mono',monospace;
+    font-size:12px; display:flex; align-items:center; gap:9px; }
+  .rack-btn:hover:not([disabled]){ border-color:#b6e24d; }
+  .rack-btn[disabled]{ opacity:.4; cursor:default; }
+  .rack-btn .nm{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px; }
+  .rack-btn .tag{ font-size:10px; color:var(--muted-2); }
+
+  .log{ border:1px solid var(--line-soft); background:var(--bg-2); border-radius:3px; padding:10px 12px;
+    height:140px; overflow-y:auto; font-size:12px; line-height:1.75; color:var(--muted); }
+  .log .l-hit{ color:#b6e24d; }
+  .log .l-dmg{ color:#e15c4b; }
+  .log .l-sys{ color:#f2d98a; }
+  .log div{ border-bottom:1px dotted var(--line-soft); padding:2px 0; }
+  .log div:last-child{ border-bottom:none; }
+
+  .empty-hint{ border:1px dashed var(--line); border-radius:4px; padding:24px; text-align:center; color:var(--muted); font-size:13px; line-height:1.7; }
+  .empty-hint button{ margin-top:10px; appearance:none; cursor:pointer; border:1px solid #b6e24d; background:transparent;
+    color:#b6e24d; padding:8px 14px; border-radius:3px; font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600; }
+
+  .overlay{ position:fixed; inset:0; background:rgba(9,12,14,.86); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
+  .overlay.show{ display:flex; }
+  .overlay-card{ max-width:440px; width:100%; text-align:center; border:1px solid var(--line); background:var(--panel);
+    border-radius:6px; padding:32px 26px; }
+  .overlay-card h2{ font-size:23px; margin:6px 0 10px; }
+  .overlay-card p{ color:var(--muted); font-size:13.5px; line-height:1.65; }
+  .overlay-card .big-emoji{ font-size:46px; }
+  .overlay-card button{ margin-top:16px; appearance:none; cursor:pointer; border:1px solid #b6e24d; background:#b6e24d;
+    color:#10161a; padding:10px 18px; border-radius:3px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:13.5px; }
+
+  footer{ text-align:center; color:var(--muted-2); font-size:11.5px; padding:30px 20px 10px; line-height:1.7; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <h1>Crisol</h1>
+      <p>Combine ácidos, bases, metais e sais para forjar armas. Você começa com o Béquer e 10 unidades de cada material — e conta com Vítreo, seu autômato companheiro, cujas 4 armas fixas ficam mais fortes a cada nível vencido.</p>
+    </div>
+    <div class="status-cluster">
+      <div class="status-item"><span class="num" id="hud-level">1 / 15</span><span class="lbl">nível</span></div>
+      <div class="cylinder-row">
+        <div class="cylinder"><div class="ticks"></div><div class="fill" id="hud-cylinder-fill" style="height:100%"></div></div>
+        <div class="status-item"><span class="num" id="hud-hp">100</span><span class="lbl">vida</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="tabs">
+  <button id="tab-lab" class="active" onclick="setView('lab')">Laboratório</button>
+  <button id="tab-arena" onclick="setView('arena')">Arena de Combate</button>
+</nav>
+
+<div class="wrap">
+<main>
+
+  <section id="view-lab" class="view active">
+    <div class="lab-grid">
+      <div>
+        <div class="lab-intro">
+          <h2>Bancada de reações</h2>
+          <p>Cada reação custa <b>10 unidades</b> do material do seu elemento — você já começa com 10 de cada um dos 10 materiais. Derrotar um guardião rende 3 unidades do material da fraqueza dele; treine contra inimigos já vencidos para acumular o que falta.</p>
+          <p>Duas receitas lendárias ficam ocultas até você vencer o Nível 10. Forjá-las é a única forma de abrir os quatro níveis extras.</p>
+        </div>
+        <div class="mat-row" id="mat-row-lab"></div>
+        <div class="filter-row" id="filter-row"></div>
+        <div class="catalog" id="catalog"></div>
+      </div>
+      <aside class="side-panel">
+        <h3>Arsenal forjado</h3>
+        <p class="sub" id="inv-count">0 de 52 armas</p>
+        <div class="inv-list" id="inv-list"></div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="view-arena" class="view">
+    <div class="arena">
+      <div class="panel enemy-card">
+        <h3 id="enemy-title">Guardião</h3>
+        <canvas id="enemy-icon" class="pixel-icon-enemy"></canvas>
+        <p class="enemy-name" id="enemy-name">—</p>
+        <p class="enemy-level" id="enemy-level">Nível 1</p>
+        <p class="enemy-desc" id="enemy-desc"></p>
+        <div class="stat-row" id="enemy-stats"></div>
+        <div class="hp-label"><span>Vida do inimigo</span><span id="enemy-hp-text">—</span></div>
+        <div class="hbeaker enemy"><div class="hticks"></div><div class="hfill" id="enemy-hp-fill" style="width:100%"></div></div>
+        <div class="weakness-row">
+          <span class="weakness-chip" id="weakness-chip">Fraqueza: ???</span>
+          <button class="analyze-btn" id="analyze-btn" onclick="analyzeEnemy()">Analisar (custa 1 turno)</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="rack-title">
+            <h3>Sua vez</h3>
+            <span class="sub" id="player-hp-text">Vida: 100/100</span>
+          </div>
+          <div class="hbeaker player" style="margin-bottom:10px;"><div class="hticks"></div><div class="hfill" id="player-hp-fill" style="width:100%"></div></div>
+          <div class="mat-row" id="mat-row-arena"></div>
+
+          <div id="lock-banner" class="banner-lock" style="display:none;"></div>
+
+          <button class="rack-btn" id="heal-btn" onclick="useHealItem()" style="margin-bottom:14px;">
+            <canvas id="icon-heal" class="pixel-icon" style="width:34px;height:34px;"></canvas>
+            <span><span class="nm">Solução-Tampão</span> <span class="tag" id="heal-count">(0/10)</span><br><span class="tag">Restaura 30 de vida · consome o turno</span></span>
+          </button>
+
+          <div class="rack-title"><h3 style="font-size:13px;">Alvo</h3></div>
+          <div class="target-row" id="target-row"></div>
+
+          <div id="rack-empty" class="empty-hint" style="display:none;">
+            Nenhuma arma forjada ainda. Volte ao laboratório e reaja um ácido com uma base, um metal ou um sal para criar sua próxima arma.
+            <div><button onclick="setView('lab')">Ir para o laboratório</button></div>
+          </div>
+          <div class="weapon-rack" id="weapon-rack"></div>
+        </div>
+
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="rack-title">
+            <h3>Vítreo, o Autômato de Vidro</h3>
+            <span class="sub">Dano atual: <span id="companion-dmg">2</span></span>
+          </div>
+          <p style="color:var(--muted);font-size:12px;margin:0 0 10px;">Seu companheiro já vem com 4 armas do catálogo. O dano dele cresce com seu progresso — de 2 no Nível 1 a 40 no Nível 15.</p>
+          <div class="weapon-rack" id="companion-rack"></div>
+        </div>
+
+        <div class="panel">
+          <h3 style="margin-bottom:10px;">Registro de batalha</h3>
+          <div class="log" id="battle-log"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<footer>Laboratório fictício de alquimia — reações inspiradas em química real (incluindo água-régia e termita), simplificadas para fins de jogo.</footer>
+
+<div class="overlay" id="overlay">
+  <div class="overlay-card">
+    <div class="big-emoji" id="overlay-emoji">🏆</div>
+    <h2 id="overlay-title">Vitória!</h2>
+    <p id="overlay-text"></p>
+    <button id="overlay-btn" onclick="overlayAction()">Continuar</button>
+  </div>
+</div>
+
+<script>
+/* ===================== ELEMENTOS / MATERIAIS ===================== */
+const ELEMENTS = {
+  'Fogo':     {icon:'🔥', color:'#e15c4b'},
+  'Água':     {icon:'💧', color:'#4fa8e0'},
+  'Gelo':     {icon:'❄️', color:'#8fd8de'},
+  'Elétrico': {icon:'⚡', color:'#e0c93e'},
+  'Veneno':   {icon:'☠️', color:'#8e6bc4'},
+  'Ácido':    {icon:'🧪', color:'#b6e24d'},
+  'Vento':    {icon:'🌪️', color:'#b7c4c9'},
+  'Terra':    {icon:'🪨', color:'#b08a4e'},
+  'Sombra':   {icon:'🌑', color:'#7b6a9e'},
+  'Luz':      {icon:'✨', color:'#f2d98a'},
+  'Neutro':   {icon:'⚪', color:'#8ca0aa'},
+};
+const ELEMENT_KEYS = ['Fogo','Água','Gelo','Elétrico','Veneno','Ácido','Vento','Terra','Sombra','Luz'];
+const TYPE_PREFIX = { espada:'Lâmina de ', arco:'Arco de ', chicote:'Chicote de ' };
+const TYPE_ICON   = { espada:'⚔️', arco:'🏹', chicote:'🪢' };
+const TYPE_LABEL  = { espada:'Espada', arco:'Arco e Flecha', chicote:'Chicote' };
+const CRAFT_COST = 10;
+const DROP_AMOUNT = 3;
+const HEAL_MAX = 10;
+const HEAL_AMOUNT = 30;
+
+/* ===================== CATÁLOGO — arma inicial + 50 reações + 2 lendárias ===================== */
+const REACTIONS = [
+{id:0,cat:'Inicial',r1:null,r2:null,prod:'Béquer',prodF:'béquer vazio',by:null,element:'Neutro',type:'espada',power:4,starter:true},
+{id:1,cat:'Neutralização',r1:'Ácido clorídrico (HCl)',r2:'Hidróxido de sódio (NaOH)',prod:'Cloreto de sódio',prodF:'NaCl',by:'H₂O',element:'Fogo',type:'espada',power:14},
+{id:2,cat:'Neutralização',r1:'Ácido sulfúrico (H₂SO₄)',r2:'Hidróxido de potássio (KOH)',prod:'Sulfato de potássio',prodF:'K₂SO₄',by:'H₂O',element:'Água',type:'arco',power:15},
+{id:3,cat:'Neutralização',r1:'Ácido nítrico (HNO₃)',r2:'Hidróxido de cálcio (Ca(OH)₂)',prod:'Nitrato de cálcio',prodF:'Ca(NO₃)₂',by:'H₂O',element:'Gelo',type:'chicote',power:15},
+{id:4,cat:'Neutralização',r1:'Ácido fosfórico (H₃PO₄)',r2:'Hidróxido de magnésio (Mg(OH)₂)',prod:'Fosfato de magnésio',prodF:'Mg₃(PO₄)₂',by:'H₂O',element:'Elétrico',type:'espada',power:16},
+{id:5,cat:'Neutralização',r1:'Ácido acético (CH₃COOH)',r2:'Hidróxido de amônio (NH₄OH)',prod:'Acetato de amônio',prodF:'CH₃COONH₄',by:'H₂O',element:'Veneno',type:'arco',power:16},
+{id:6,cat:'Neutralização',r1:'Ácido carbônico (H₂CO₃)',r2:'Hidróxido de alumínio (Al(OH)₃)',prod:'Carbonato de alumínio',prodF:'Al₂(CO₃)₃',by:'H₂O',element:'Ácido',type:'chicote',power:17},
+{id:7,cat:'Neutralização',r1:'Ácido fluorídrico (HF)',r2:'Hidróxido de ferro III (Fe(OH)₃)',prod:'Fluoreto de ferro III',prodF:'FeF₃',by:'H₂O',element:'Vento',type:'espada',power:17},
+{id:8,cat:'Neutralização',r1:'Ácido bromídrico (HBr)',r2:'Hidróxido de bário (Ba(OH)₂)',prod:'Brometo de bário',prodF:'BaBr₂',by:'H₂O',element:'Terra',type:'arco',power:18},
+{id:9,cat:'Neutralização',r1:'Ácido iodídrico (HI)',r2:'Hidróxido de lítio (LiOH)',prod:'Iodeto de lítio',prodF:'LiI',by:'H₂O',element:'Sombra',type:'chicote',power:18},
+{id:10,cat:'Neutralização',r1:'Ácido sulfídrico (H₂S)',r2:'Hidróxido de cobre II (Cu(OH)₂)',prod:'Sulfeto de cobre II',prodF:'CuS',by:'H₂O',element:'Luz',type:'espada',power:24},
+{id:11,cat:'Neutralização',r1:'Ácido perclórico (HClO₄)',r2:'Hidróxido de sódio (NaOH)',prod:'Perclorato de sódio',prodF:'NaClO₄',by:'H₂O',element:'Fogo',type:'arco',power:19},
+{id:12,cat:'Neutralização',r1:'Ácido bórico (H₃BO₃)',r2:'Hidróxido de potássio (KOH)',prod:'Metaborato de potássio',prodF:'KBO₂',by:'H₂O',element:'Água',type:'chicote',power:19},
+{id:13,cat:'Neutralização',r1:'Ácido nitroso (HNO₂)',r2:'Hidróxido de cálcio (Ca(OH)₂)',prod:'Nitrito de cálcio',prodF:'Ca(NO₂)₂',by:'H₂O',element:'Gelo',type:'espada',power:20},
+{id:14,cat:'Neutralização',r1:'Ácido sulfuroso (H₂SO₃)',r2:'Hidróxido de magnésio (Mg(OH)₂)',prod:'Sulfito de magnésio',prodF:'MgSO₃',by:'H₂O',element:'Elétrico',type:'arco',power:20},
+{id:15,cat:'Neutralização',r1:'Ácido cianídrico (HCN)',r2:'Hidróxido de amônio (NH₄OH)',prod:'Cianeto de amônio',prodF:'NH₄CN',by:'H₂O',element:'Veneno',type:'chicote',power:21},
+{id:16,cat:'Neutralização',r1:'Ácido hipocloroso (HClO)',r2:'Hidróxido de alumínio (Al(OH)₃)',prod:'Hipoclorito de alumínio',prodF:'Al(ClO)₃',by:'H₂O',element:'Ácido',type:'espada',power:21},
+{id:17,cat:'Neutralização',r1:'Ácido oxálico (H₂C₂O₄)',r2:'Hidróxido de ferro III (Fe(OH)₃)',prod:'Oxalato de ferro III',prodF:'Fe₂(C₂O₄)₃',by:'H₂O',element:'Vento',type:'arco',power:22},
+{id:18,cat:'Neutralização',r1:'Ácido fórmico (HCOOH)',r2:'Hidróxido de bário (Ba(OH)₂)',prod:'Formiato de bário',prodF:'Ba(HCOO)₂',by:'H₂O',element:'Terra',type:'chicote',power:22},
+{id:19,cat:'Neutralização',r1:'Ácido crômico (H₂CrO₄)',r2:'Hidróxido de lítio (LiOH)',prod:'Cromato de lítio',prodF:'Li₂CrO₄',by:'H₂O',element:'Sombra',type:'espada',power:23},
+{id:20,cat:'Neutralização',r1:'Ácido iódico (HIO₃)',r2:'Hidróxido de cobre II (Cu(OH)₂)',prod:'Iodato de cobre II',prodF:'Cu(IO₃)₂',by:'H₂O',element:'Luz',type:'arco',power:30},
+{id:21,cat:'Metal + ácido',r1:'Zinco metálico (Zn)',r2:'Ácido clorídrico (HCl)',prod:'Cloreto de zinco',prodF:'ZnCl₂',by:'H₂↑',element:'Fogo',type:'chicote',power:20},
+{id:22,cat:'Metal + ácido',r1:'Zinco metálico (Zn)',r2:'Ácido sulfúrico (H₂SO₄)',prod:'Sulfato de zinco',prodF:'ZnSO₄',by:'H₂↑',element:'Elétrico',type:'espada',power:21},
+{id:23,cat:'Metal + ácido',r1:'Magnésio metálico (Mg)',r2:'Ácido clorídrico (HCl)',prod:'Cloreto de magnésio',prodF:'MgCl₂',by:'H₂↑',element:'Fogo',type:'arco',power:20},
+{id:24,cat:'Metal + ácido',r1:'Magnésio metálico (Mg)',r2:'Ácido nítrico (HNO₃)',prod:'Nitrato de magnésio',prodF:'Mg(NO₃)₂',by:'H₂↑',element:'Elétrico',type:'chicote',power:22},
+{id:25,cat:'Metal + ácido',r1:'Ferro metálico (Fe)',r2:'Ácido sulfúrico (H₂SO₄)',prod:'Sulfato de ferro II',prodF:'FeSO₄',by:'H₂↑',element:'Fogo',type:'espada',power:21},
+{id:26,cat:'Metal + ácido',r1:'Ferro metálico (Fe)',r2:'Ácido clorídrico (HCl)',prod:'Cloreto de ferro II',prodF:'FeCl₂',by:'H₂↑',element:'Elétrico',type:'arco',power:23},
+{id:27,cat:'Metal + ácido',r1:'Alumínio metálico (Al)',r2:'Ácido clorídrico (HCl)',prod:'Cloreto de alumínio',prodF:'AlCl₃',by:'H₂↑',element:'Fogo',type:'chicote',power:22},
+{id:28,cat:'Metal + ácido',r1:'Alumínio metálico (Al)',r2:'Ácido sulfúrico (H₂SO₄)',prod:'Sulfato de alumínio',prodF:'Al₂(SO₄)₃',by:'H₂↑',element:'Elétrico',type:'espada',power:24},
+{id:29,cat:'Metal + ácido',r1:'Sódio metálico (Na)',r2:'Ácido clorídrico (HCl)',prod:'Cloreto de sódio',prodF:'NaCl',by:'H₂↑',element:'Fogo',type:'arco',power:23},
+{id:30,cat:'Metal + ácido',r1:'Sódio metálico (Na)',r2:'Ácido acético (CH₃COOH)',prod:'Acetato de sódio',prodF:'CH₃COONa',by:'H₂↑',element:'Elétrico',type:'chicote',power:25},
+{id:31,cat:'Efervescência',r1:'Carbonato de sódio (Na₂CO₃)',r2:'Ácido clorídrico (HCl)',prod:'Cloreto de sódio',prodF:'NaCl',by:'H₂O + CO₂↑',element:'Vento',type:'espada',power:12},
+{id:32,cat:'Efervescência',r1:'Carbonato de sódio (Na₂CO₃)',r2:'Ácido sulfúrico (H₂SO₄)',prod:'Sulfato de sódio',prodF:'Na₂SO₄',by:'H₂O + CO₂↑',element:'Vento',type:'arco',power:13},
+{id:33,cat:'Efervescência',r1:'Carbonato de cálcio (CaCO₃)',r2:'Ácido clorídrico (HCl)',prod:'Cloreto de cálcio',prodF:'CaCl₂',by:'H₂O + CO₂↑',element:'Vento',type:'chicote',power:12},
+{id:34,cat:'Efervescência',r1:'Carbonato de cálcio (CaCO₃)',r2:'Ácido acético (CH₃COOH)',prod:'Acetato de cálcio',prodF:'Ca(CH₃COO)₂',by:'H₂O + CO₂↑',element:'Vento',type:'espada',power:13},
+{id:35,cat:'Efervescência',r1:'Carbonato de potássio (K₂CO₃)',r2:'Ácido nítrico (HNO₃)',prod:'Nitrato de potássio',prodF:'KNO₃',by:'H₂O + CO₂↑',element:'Vento',type:'arco',power:14},
+{id:36,cat:'Efervescência',r1:'Carbonato de potássio (K₂CO₃)',r2:'Ácido clorídrico (HCl)',prod:'Cloreto de potássio',prodF:'KCl',by:'H₂O + CO₂↑',element:'Vento',type:'chicote',power:14},
+{id:37,cat:'Efervescência',r1:'Carbonato de magnésio (MgCO₃)',r2:'Ácido sulfúrico (H₂SO₄)',prod:'Sulfato de magnésio',prodF:'MgSO₄',by:'H₂O + CO₂↑',element:'Vento',type:'espada',power:15},
+{id:38,cat:'Efervescência',r1:'Carbonato de magnésio (MgCO₃)',r2:'Ácido clorídrico (HCl)',prod:'Cloreto de magnésio',prodF:'MgCl₂',by:'H₂O + CO₂↑',element:'Vento',type:'arco',power:15},
+{id:39,cat:'Efervescência',r1:'Bicarbonato de sódio (NaHCO₃)',r2:'Ácido clorídrico (HCl)',prod:'Cloreto de sódio',prodF:'NaCl',by:'H₂O + CO₂↑',element:'Vento',type:'chicote',power:16},
+{id:40,cat:'Efervescência',r1:'Bicarbonato de sódio (NaHCO₃)',r2:'Ácido acético (CH₃COOH)',prod:'Acetato de sódio',prodF:'CH₃COONa',by:'H₂O + CO₂↑',element:'Vento',type:'espada',power:16},
+{id:41,cat:'Precipitação',r1:'Nitrato de prata (AgNO₃)',r2:'Cloreto de sódio (NaCl)',prod:'Cloreto de prata',prodF:'AgCl↓',by:'NaNO₃',element:'Terra',type:'arco',power:22},
+{id:42,cat:'Precipitação',r1:'Cloreto de bário (BaCl₂)',r2:'Sulfato de sódio (Na₂SO₄)',prod:'Sulfato de bário',prodF:'BaSO₄↓',by:'NaCl',element:'Sombra',type:'chicote',power:23},
+{id:43,cat:'Precipitação',r1:'Nitrato de chumbo II (Pb(NO₃)₂)',r2:'Iodeto de potássio (KI)',prod:'Iodeto de chumbo II',prodF:'PbI₂↓',by:'KNO₃',element:'Terra',type:'espada',power:24},
+{id:44,cat:'Precipitação',r1:'Sulfato de cobre II (CuSO₄)',r2:'Sulfeto de sódio (Na₂S)',prod:'Sulfeto de cobre II',prodF:'CuS↓',by:'Na₂SO₄',element:'Sombra',type:'arco',power:25},
+{id:45,cat:'Precipitação',r1:'Cloreto de zinco (ZnCl₂)',r2:'Carbonato de sódio (Na₂CO₃)',prod:'Carbonato de zinco',prodF:'ZnCO₃↓',by:'NaCl',element:'Terra',type:'chicote',power:24},
+{id:46,cat:'Precipitação',r1:'Cloreto de cálcio (CaCl₂)',r2:'Carbonato de amônio ((NH₄)₂CO₃)',prod:'Carbonato de cálcio',prodF:'CaCO₃↓',by:'NH₄Cl',element:'Sombra',type:'espada',power:25},
+{id:47,cat:'Precipitação',r1:'Cloreto de ferro III (FeCl₃)',r2:'Fosfato de sódio (Na₃PO₄)',prod:'Fosfato de ferro III',prodF:'FePO₄↓',by:'NaCl',element:'Terra',type:'arco',power:26},
+{id:48,cat:'Precipitação',r1:'Cloreto de alumínio (AlCl₃)',r2:'Fosfato de sódio (Na₃PO₄)',prod:'Fosfato de alumínio',prodF:'AlPO₄↓',by:'NaCl',element:'Sombra',type:'chicote',power:26},
+{id:49,cat:'Precipitação',r1:'Sulfato de magnésio (MgSO₄)',r2:'Carbonato de sódio (Na₂CO₃)',prod:'Carbonato de magnésio',prodF:'MgCO₃↓',by:'Na₂SO₄',element:'Terra',type:'espada',power:27},
+{id:50,cat:'Precipitação',r1:'Nitrato de chumbo II (Pb(NO₃)₂)',r2:'Sulfato de sódio (Na₂SO₄)',prod:'Sulfato de chumbo II',prodF:'PbSO₄↓',by:'NaNO₃',element:'Sombra',type:'arco',power:27},
+{id:51,cat:'Lendária',r1:'Ácido nítrico (HNO₃)',r2:'Ácido clorídrico (HCl)',prod:'Água-régia',prodF:'HNO₃·3HCl',by:'NOCl + Cl₂ + H₂O',element:'Luz',type:'espada',power:42,secret:true,legendary:true},
+{id:52,cat:'Lendária',r1:'Óxido de ferro III (Fe₂O₃)',r2:'Alumínio metálico (Al)',prod:'Fusão Termítica',prodF:'Al₂O₃ + Fe',by:'calor intenso',element:'Fogo',type:'chicote',power:42,secret:true,legendary:true},
+];
+function getReaction(id){ return REACTIONS.find(r=>r.id===id); }
+
+/* ===================== COMPANHEIRO: VÍTREO ===================== */
+const COMPANION_NAME = 'Vítreo';
+const COMPANION_WEAPONS = [
+  {id:'c1', name:'Lâmina de Cloreto de Sódio', type:'espada', element:'Fogo'},
+  {id:'c2', name:'Arco de Sulfato de Potássio', type:'arco', element:'Água'},
+  {id:'c3', name:'Chicote de Nitrato de Cálcio', type:'chicote', element:'Gelo'},
+  {id:'c4', name:'Lâmina de Sulfato de Zinco', type:'espada', element:'Elétrico'},
+];
+function companionDamage(level){
+  const lvl = Math.max(1, Math.min(15, level));
+  return Math.round(2 + (lvl-1) * (40-2) / 14);
+}
+
+/* ===================== 15 GUARDIÕES ===================== */
+const ENEMIES = [
+  {name:'Gosma Ácida', hp:70,  atk:7,  def:2,  weak:'Água',     desc:'Uma poça viscosa que corrói tudo o que toca.'},
+  {name:'Sal Rastejante', hp:95, atk:9,  def:3,  weak:'Terra',    desc:'Cristais salinos que rastejam pelo chão do laboratório.'},
+  {name:'Vapor Venenoso', hp:120, atk:11, def:4,  weak:'Vento',    desc:'Uma nuvem instável que sufoca com gases tóxicos.'},
+  {name:'Golem de Ferrugem', hp:150, atk:13, def:6,  weak:'Elétrico', desc:'Um colosso de metal oxidado, pesado e implacável.'},
+  {name:'Serpente de Mercúrio', hp:180, atk:15, def:6,  weak:'Veneno',   desc:'Desliza em silêncio, deixando um rastro tóxico.'},
+  {name:'Fantasma Sulfuroso', hp:210, atk:17, def:7,  weak:'Sombra',   desc:'Um espectro nascido de reações escuras e fumegantes.'},
+  {name:'Dragão Efervescente', hp:240, atk:19, def:8,  weak:'Fogo',     desc:'Cospe calor de uma reação que nunca se interrompe.'},
+  {name:'Colosso Congelado', hp:270, atk:21, def:9,  weak:'Gelo',     desc:'Nasceu de uma reação endotérmica; seu núcleo nunca aquece.'},
+  {name:'Víbora Corrosiva', hp:310, atk:23, def:10, weak:'Ácido',    desc:'Suas presas dissolvem qualquer coisa que as precede.'},
+  {name:'Rei dos Sais, Cristal Eterno', hp:420, atk:27, def:13, weak:'Luz', desc:'A forma mais pura e antiga de todos os sais — guardião do laboratório principal.'},
+  {name:'Cristal de Amônia Instável', hp:460, atk:29, def:14, weak:'Elétrico', desc:'Pulsa com descargas erráticas vindas do primeiro nível extra.'},
+  {name:'Víbora de Cianeto', hp:500, atk:31, def:15, weak:'Veneno', desc:'Uma criatura nascida do veneno mais instável do laboratório.'},
+  {name:'Titã de Óxido', hp:540, atk:33, def:16, weak:'Terra', desc:'Um colosso mineral formado por eras de oxidação acumulada.'},
+  {name:'Arauto das Sombras Salinas', hp:580, atk:35, def:17, weak:'Sombra', desc:'Anuncia a chegada do imperador — envolto em precipitados escuros.'},
+  {name:'Imperador Alquímico, Última Reação', hp:700, atk:40, def:20, weak:'Luz', desc:'A síntese final de todo o laboratório. Só a energia mais pura o alcança.'},
+];
+
+/* ===================== ESTADO ===================== */
+const state = {
+  view:'lab', filter:'todas',
+  crafted:new Set([0]),
+  materials:Object.fromEntries(ELEMENT_KEYS.map(k=>[k,10])),
+  level:1, playerHP:100, playerMaxHP:100,
+  target:0, enemyHP:ENEMIES[0].hp,
+  defeated:new Set(),
+  weaknessRevealed:false,
+  secretsUnlocked:false, awaitingSecrets:false,
+  healItems:0,
+  gameOver:false,
+};
+let overlayMode='continue', overlayCallback=null;
+
+/* ===================== PIXEL ART ===================== */
+function shade(hex, percent){
+  const f=parseInt(hex.slice(1),16), t=percent<0?0:255, p=Math.abs(percent);
+  const R=f>>16, G=(f>>8)&0x00FF, B=f&0x0000FF;
+  return "#"+(0x1000000+(Math.round((t-R)*p)+R)*0x10000+(Math.round((t-G)*p)+G)*0x100+(Math.round((t-B)*p)+B)).toString(16).slice(1);
+}
+function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return h; }
+function mulberry32(seed){
+  return function(){
+    seed|=0; seed=seed+0x6D2B79F5|0;
+    let t=Math.imul(seed^seed>>>15,1|seed);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+const WEAPON_TEMPLATES = {
+  espada:[
+    ".....BB.....",".....BB.....",".....BB.....",".....BB.....",
+    ".....BB.....",".....BB.....","....EBBE....","....EBBE....",
+    "...XXXXXX...","....XXXX....",".....HH.....",".....HH.....",
+    "....HHHH....","....HHHH...."
+  ],
+  arco:[
+    "..BB........",".B..B.......","B....B......","B.....B.....",
+    "B......AAAAT","B.....S.....","B....S......",".B..S.......",
+    "..BB........","............","............","............",
+    "............","............"
+  ],
+  chicote:[
+    "..B.........","...B........","..B.........","...B........",
+    "....B.......","...B........","....B.......",".....B......",
+    "......B.....",".......XX...","........XXH.",".........HH.",
+    "............","............"
+  ]
+};
+const BEAKER_TEMPLATE = [
+  ".G........G.",".G........G.",".G.T......G.",".G........G.",
+  ".G.T......G.",".G........G.",".G.T......G.",".G........G.",
+  ".G........G.",".GG......GG.","..G......G..","..G......G..",
+  "..GGGGGGGG..","............"
+];
+const HEAL_TEMPLATE = [
+  ".G........G.",".G........G.",".G.T......G.",".G........G.",
+  ".G.T......G.",".G........G.",".GLLLLLLLLG.",".GLLLLLLLLG.",
+  ".GLLLLLLLLG.",".GGLLLLLLGG.","..GLLLLLLG..","..GLLLLLLG..",
+  "..GGGGGGGG..","............"
+];
+function weaponColorMap(type, elementColor, legendary){
+  const gold = legendary ? '#ffe27a' : '#d9c46a';
+  if(type==='espada') return {B:elementColor, E:shade(elementColor,-0.3), X:gold, H:'#6b4a33'};
+  if(type==='arco')   return {B:elementColor, S:'#e7edef', A:'#6b4a33', T:gold};
+  return {B:elementColor, X:gold, H:'#6b4a33'};
+}
+function drawGrid(canvas, template, colorMap, cell){
+  if(!canvas) return;
+  const cols=template[0].length, rows=template.length;
+  canvas.width=cols*cell; canvas.height=rows*cell;
+  const ctx=canvas.getContext('2d'); ctx.imageSmoothingEnabled=false;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const ch=template[r][c];
+      if(ch==='.') continue;
+      ctx.fillStyle = colorMap[ch] || '#888';
+      ctx.fillRect(c*cell, r*cell, cell, cell);
+    }
+  }
+  return ctx;
+}
+function drawWeaponIcon(canvas, r){
+  if(!canvas) return;
+  if(r.starter){ drawGrid(canvas, BEAKER_TEMPLATE, {G:'#a9c2c9', T:'#5f7078'}, 4); return; }
+  const tpl = WEAPON_TEMPLATES[r.type];
+  const cmap = weaponColorMap(r.type, ELEMENTS[r.element].color, r.legendary);
+  const ctx = drawGrid(canvas, tpl, cmap, 4);
+  if(r.legendary && ctx){
+    const rng = mulberry32(hashStr(r.prod));
+    ctx.fillStyle = '#fff7d6';
+    const cols=tpl[0].length, rows=tpl.length;
+    for(let i=0;i<5;i++){
+      const cx=Math.floor(rng()*cols), ry=Math.floor(rng()*rows);
+      if(tpl[ry][cx]==='.') ctx.fillRect(cx*4, ry*4, 4, 4);
+    }
+  }
+}
+function drawFlaskIcon(canvas){
+  drawGrid(canvas, HEAL_TEMPLATE, {G:'#a9c2c9', T:'#5f7078', L:'#8bc53f'}, 4);
+}
+function drawMonsterIcon(canvas, name, colorHex){
+  if(!canvas) return;
+  const cols=7, rows=8, cell=6;
+  const rng = mulberry32(hashStr(name));
+  const grid=[];
+  for(let r=0;r<rows;r++){
+    const row=[];
+    for(let c=0;c<cols;c++){ row.push(rng() < (r<2?0.32:0.58)); }
+    grid.push(row);
+  }
+  grid[Math.floor(rows/2)][cols-1]=true;
+  const full = grid.map(row=>row.concat([...row].reverse()));
+  canvas.width = cols*2*cell; canvas.height = rows*cell;
+  const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled=false;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const dark = shade(colorHex,-0.4);
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols*2;c++){
+      if(!full[r][c]) continue;
+      const edge = !(full[r-1] && full[r-1][c]) || !(full[r+1] && full[r+1][c]) || !full[r][c-1] || !full[r][c+1];
+      ctx.fillStyle = edge ? dark : colorHex;
+      ctx.fillRect(c*cell, r*cell, cell, cell);
+    }
+  }
+  ctx.fillStyle = '#141a1d';
+  ctx.fillRect((cols-1)*cell, 2*cell, cell, cell);
+  ctx.fillRect((cols)*cell, 2*cell, cell, cell);
+}
+
+/* ===================== NAVEGAÇÃO ===================== */
+function setView(v){
+  state.view=v;
+  document.getElementById('view-lab').classList.toggle('active', v==='lab');
+  document.getElementById('view-arena').classList.toggle('active', v==='arena');
+  document.getElementById('tab-lab').classList.toggle('active', v==='lab');
+  document.getElementById('tab-arena').classList.toggle('active', v==='arena');
+  if(v==='arena') renderArena();
+}
+
+/* ===================== HUD ===================== */
+function renderHud(){
+  document.getElementById('hud-level').textContent = Math.min(state.level,15) + ' / 15';
+  document.getElementById('hud-hp').textContent = state.playerHP;
+  const pct = Math.max(0, state.playerHP/state.playerMaxHP*100);
+  const fill = document.getElementById('hud-cylinder-fill');
+  fill.style.height = pct+'%';
+  fill.style.background = pct>50 ? 'linear-gradient(180deg,#8bc53f,#6ba030)' : (pct>25 ? 'linear-gradient(180deg,#e0c93e,#c2a92e)' : 'linear-gradient(180deg,#e15c4b,#c2503f)');
+}
+function renderMaterialsRow(containerId){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML = ELEMENT_KEYS.map(k=>{
+    const m=ELEMENTS[k];
+    return `<span class="mat-chip" style="border-color:${m.color}"><span style="color:${m.color}">${m.icon}</span> ${state.materials[k]}</span>`;
+  }).join('');
+}
+
+/* ===================== LABORATÓRIO ===================== */
+const FILTERS = ['todas','espada','arco','chicote'];
+function renderFilterRow(){
+  const row = document.getElementById('filter-row');
+  row.innerHTML = FILTERS.map(f=>{
+    const label = f==='todas' ? 'Todas as reações' : (TYPE_ICON[f]+' '+TYPE_LABEL[f]);
+    return `<button class="${state.filter===f?'active':''}" onclick="setFilter('${f}')">${label}</button>`;
+  }).join('');
+}
+function setFilter(f){ state.filter=f; renderFilterRow(); renderCatalog(); }
+
+function renderCatalog(){
+  const grid = document.getElementById('catalog');
+  const list = REACTIONS.filter(r => !r.starter && (state.filter==='todas' || r.type===state.filter));
+  grid.innerHTML = list.map(r=>{
+    if(r.secret && !state.secretsUnlocked){
+      return `<div class="card locked-card">
+        <span class="type-chip">🔒 Receita lendária</span>
+        <div class="equation mut">Oculta até você vencer o Nível 10 (Rei dos Sais, Cristal Eterno).</div>
+      </div>`;
+    }
+    const el = ELEMENTS[r.element];
+    const crafted = state.crafted.has(r.id);
+    const weaponName = TYPE_PREFIX[r.type] + r.prod;
+    const have = state.materials[r.element];
+    const enough = have >= CRAFT_COST;
+    let btnLabel = crafted ? 'Forjada ✓' : (enough ? 'Forjar' : `Faltam ${CRAFT_COST-have}`);
+    return `
+    <div class="card ${crafted?'crafted':''} ${r.legendary?'legendary':''}">
+      <div class="tagrow">
+        <span class="type-chip">${TYPE_ICON[r.type]} ${TYPE_LABEL[r.type]} · ${r.cat}</span>
+        <span class="element-chip" style="background:${el.color}">${el.icon} ${r.element}</span>
+      </div>
+      <div class="head-row">
+        <canvas id="icon-w-${r.id}" class="pixel-icon ${r.legendary?'legendary':''}"></canvas>
+        <div>
+          <div class="equation">${r.r1} <span class="mut">+</span> ${r.r2} <span class="mut">→</span> ${r.prodF} <span class="mut">+ ${r.by}</span></div>
+          <div class="weapon-name">${weaponName}</div>
+        </div>
+      </div>
+      <div class="power-row">
+        <span class="power">Poder: <b>${r.power}</b></span>
+        <span class="cost-row">Custo: ${CRAFT_COST} ${el.icon} <span class="${enough?'ok':'low'}">(${have}/${CRAFT_COST})</span></span>
+      </div>
+      <button class="craft-btn" onclick="craft(${r.id})" ${crafted||!enough?'disabled':''}>${btnLabel}</button>
+    </div>`;
+  }).join('');
+  list.forEach(r=>{ if(!(r.secret && !state.secretsUnlocked)) drawWeaponIcon(document.getElementById('icon-w-'+r.id), r); });
+}
+
+function craft(id){
+  const r = getReaction(id);
+  if(!r || state.crafted.has(id)) return;
+  if(r.secret && !state.secretsUnlocked) return;
+  if(state.materials[r.element] < CRAFT_COST) return;
+  state.materials[r.element] -= CRAFT_COST;
+  state.crafted.add(id);
+  if(r.secret) checkSecretsComplete();
+  renderCatalog(); renderInventory(); renderMaterialsRow('mat-row-lab');
+  if(state.view==='arena'){ renderArena(); }
+}
+
+function checkSecretsComplete(){
+  if(state.crafted.has(51) && state.crafted.has(52) && state.awaitingSecrets){
+    state.awaitingSecrets = false;
+    log('As duas armas lendárias foram forjadas! Os quatro níveis extras se abriram.', 'l-sys');
+    showOverlay('🔓','Portões extras abertos!','Água-régia e Fusão Termítica estão prontas. Volte à arena — o Nível 11 aguarda.', 'Ir para a arena', ()=>setView('arena'));
+  }
+}
+
+function renderInventory(){
+  const list = document.getElementById('inv-list');
+  const count = document.getElementById('inv-count');
+  const craftedReal = [...state.crafted].filter(id=>id!==0).length;
+  count.textContent = `${craftedReal} de 52 armas`;
+  const items = REACTIONS.filter(r=>state.crafted.has(r.id));
+  if(items.length===0){
+    list.innerHTML = `<p class="inv-empty">Nenhuma arma forjada ainda.</p>`;
+    return;
+  }
+  list.innerHTML = items.map(r=>{
+    const el = ELEMENTS[r.element];
+    return `<div class="inv-item">
+      <canvas id="icon-inv-${r.id}" class="pixel-icon" style="width:36px;height:36px;"></canvas>
+      <div>
+        <div class="nm">${TYPE_PREFIX[r.type]}${r.prod}</div>
+        <div class="meta">${TYPE_ICON[r.type]} ${el.icon} ${r.element} · Poder ${r.power}</div>
+      </div>
+    </div>`;
+  }).join('');
+  items.forEach(r=>drawWeaponIcon(document.getElementById('icon-inv-'+r.id), r));
+}
+
+/* ===================== ARENA — alvo/farm ===================== */
+function farmableIndices(){
+  const arr = [...state.defeated];
+  const nextIdx = state.level-1;
+  if(!state.gameOver && nextIdx<15 && !state.defeated.has(nextIdx)){
+    if(!(nextIdx===10 && state.awaitingSecrets)) arr.push(nextIdx);
+  }
+  return [...new Set(arr)].sort((a,b)=>a-b);
+}
+function selectTarget(idx){
+  if(state.gameOver) return;
+  state.target=idx; state.enemyHP=ENEMIES[idx].hp; state.weaknessRevealed=false;
+  renderArena();
+}
+function selectTargetSilently(idx){ state.target=idx; state.enemyHP=ENEMIES[idx].hp; state.weaknessRevealed=false; }
+
+function renderArena(){
+  const e = ENEMIES[state.target];
+  document.getElementById('enemy-title').textContent = `Guardião — Nível ${state.target+1}`;
+  drawMonsterIcon(document.getElementById('enemy-icon'), e.name, ELEMENTS[e.weak].color);
+  document.getElementById('enemy-name').textContent = e.name;
+  document.getElementById('enemy-level').textContent = `Nível ${state.target+1} de 15`;
+  document.getElementById('enemy-desc').textContent = e.desc;
+  document.getElementById('enemy-stats').innerHTML = `<span>ATQ ${e.atk}</span><span>DEF ${e.def}</span>`;
+
+  document.getElementById('enemy-hp-text').textContent = `${Math.max(0,state.enemyHP)} / ${e.hp}`;
+  document.getElementById('enemy-hp-fill').style.width = Math.max(0,state.enemyHP/e.hp*100)+'%';
+
+  document.getElementById('player-hp-text').textContent = `Vida: ${state.playerHP}/${state.playerMaxHP}`;
+  document.getElementById('player-hp-fill').style.width = Math.max(0,state.playerHP/state.playerMaxHP*100)+'%';
+
+  renderMaterialsRow('mat-row-arena');
+
+  document.getElementById('heal-count').textContent = `(${state.healItems}/${HEAL_MAX})`;
+  document.getElementById('heal-btn').disabled = state.gameOver || state.healItems<=0;
+  drawFlaskIcon(document.getElementById('icon-heal'));
+
+  const chip = document.getElementById('weakness-chip');
+  const analyzeBtn = document.getElementById('analyze-btn');
+  if(state.weaknessRevealed){
+    const el = ELEMENTS[e.weak];
+    chip.textContent = `Fraqueza: ${el.icon} ${e.weak}`;
+    chip.classList.add('revealed'); chip.style.background = el.color;
+    analyzeBtn.style.display = 'none';
+  } else {
+    chip.textContent = 'Fraqueza: ???';
+    chip.classList.remove('revealed'); chip.style.background = 'transparent';
+    analyzeBtn.style.display = 'inline-block';
+  }
+
+  const lockBanner = document.getElementById('lock-banner');
+  if(state.awaitingSecrets){
+    lockBanner.style.display='block';
+    lockBanner.innerHTML = `🔒 <b>Nível 11 bloqueado.</b> Forje <b>Água-régia</b> e <b>Fusão Termítica</b> no laboratório (10 unidades do elemento de cada) para liberar os quatro níveis extras. Enquanto isso, treine contra guardiões já vencidos.`;
+  } else {
+    lockBanner.style.display='none';
+  }
+
+  const targets = farmableIndices();
+  const targetRow = document.getElementById('target-row');
+  targetRow.innerHTML = targets.map(idx=>{
+    const en = ENEMIES[idx];
+    const isNext = (idx===state.level-1) && !state.defeated.has(idx);
+    return `<button class="target-chip ${idx===state.target?'active':''}" onclick="selectTarget(${idx})">
+      <canvas id="icon-target-${idx}" class="pixel-icon-mini"></canvas>
+      <span>${en.name.split(',')[0].split(' ').slice(0,2).join(' ')}</span>
+      ${isNext?'<span class="flag">próximo</span>':'<span class="flag">treinar</span>'}
+    </button>`;
+  }).join('');
+  targets.forEach(idx=>drawMonsterIcon(document.getElementById('icon-target-'+idx), ENEMIES[idx].name, ELEMENTS[ENEMIES[idx].weak].color));
+
+  const rack = document.getElementById('weapon-rack');
+  const emptyHint = document.getElementById('rack-empty');
+  const weapons = REACTIONS.filter(r=>state.crafted.has(r.id)).sort((a,b)=>b.power-a.power);
+  if(weapons.length===0){
+    rack.innerHTML=''; emptyHint.style.display='block';
+  } else {
+    emptyHint.style.display='none';
+    rack.innerHTML = weapons.map(r=>{
+      const el = ELEMENTS[r.element];
+      const isWeak = state.weaknessRevealed && r.element===e.weak;
+      return `<button class="rack-btn" onclick="attack(${r.id})" ${state.gameOver?'disabled':''}>
+        <canvas id="icon-rack-${r.id}" class="pixel-icon" style="width:34px;height:34px;"></canvas>
+        <span><span class="nm">${TYPE_PREFIX[r.type]}${r.prod}</span><br><span class="tag">${TYPE_ICON[r.type]} ${el.icon} ${r.element} · Poder ${r.power}${isWeak?' · ⚡ vantagem!':''}</span></span>
+      </button>`;
+    }).join('');
+    weapons.forEach(r=>drawWeaponIcon(document.getElementById('icon-rack-'+r.id), r));
+  }
+
+  renderCompanion();
+}
+
+function renderCompanion(){
+  const dmg = companionDamage(state.level);
+  document.getElementById('companion-dmg').textContent = dmg;
+  const e = ENEMIES[state.target];
+  const rack = document.getElementById('companion-rack');
+  rack.innerHTML = COMPANION_WEAPONS.map(w=>{
+    const el = ELEMENTS[w.element];
+    const isWeak = state.weaknessRevealed && w.element===e.weak;
+    return `<button class="rack-btn" onclick="attackCompanion('${w.id}')" ${state.gameOver?'disabled':''}>
+      <canvas id="icon-comp-${w.id}" class="pixel-icon" style="width:34px;height:34px;"></canvas>
+      <span><span class="nm">${w.name}</span><br><span class="tag">${TYPE_ICON[w.type]} ${el.icon} ${w.element} · Poder ${dmg}${isWeak?' · ⚡ vantagem!':''}</span></span>
+    </button>`;
+  }).join('');
+  COMPANION_WEAPONS.forEach(w=>drawWeaponIcon(document.getElementById('icon-comp-'+w.id), {type:w.type, element:w.element, legendary:false}));
+}
+
+/* ===================== LOG ===================== */
+function log(msg, cls){
+  const box = document.getElementById('battle-log');
+  const line = document.createElement('div');
+  if(cls) line.className = cls;
+  line.textContent = msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+function clearLog(){ document.getElementById('battle-log').innerHTML=''; }
+
+/* ===================== ANALISAR ===================== */
+function analyzeEnemy(){
+  if(state.weaknessRevealed || state.gameOver) return;
+  state.weaknessRevealed = true;
+  const e = ENEMIES[state.target];
+  log(`Você analisa ${e.name} e descobre sua fraqueza.`, 'l-sys');
+  renderArena();
+  enemyTurn(true);
+}
+
+/* ===================== COMBATE ===================== */
+function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+function resolveAttack(weapon){
+  const e = ENEMIES[state.target];
+  let hits=1, perHitMult=1;
+  if(weapon.type==='arco' && Math.random()<0.55){ hits=2; perHitMult=0.62; }
+
+  let totalDmg=0;
+  const weak = state.weaknessRevealed && weapon.element===e.weak;
+  for(let i=0;i<hits;i++){
+    let base = (weapon.power*perHitMult) + rand(-2,2);
+    if(weak) base *= 1.8;
+    if(weapon.type==='espada' && Math.random()<0.15) base *= 1.5;
+    let def = e.def;
+    if(weapon.type==='chicote') def = def*0.5;
+    totalDmg += Math.max(1, Math.round(base-def));
+  }
+
+  state.enemyHP -= totalDmg;
+  log(`${weapon.actorLabel} ataca com ${weapon.name}${hits>1?' (golpe duplo)':''} e causa ${totalDmg} de dano${weak?' — SUPER EFETIVO!':''}.`, 'l-hit');
+
+  if(state.enemyHP<=0){ defeatCurrentTarget(); return; }
+  renderArena();
+  enemyTurn(false);
+}
+
+function attack(reactionId){
+  if(state.gameOver) return;
+  const r = getReaction(reactionId);
+  resolveAttack({name:TYPE_PREFIX[r.type]+r.prod, type:r.type, element:r.element, power:r.power, actorLabel:'Você'});
+}
+function attackCompanion(cid){
+  if(state.gameOver) return;
+  const w = COMPANION_WEAPONS.find(x=>x.id===cid);
+  const power = companionDamage(state.level);
+  resolveAttack({name:w.name, type:w.type, element:w.element, power, actorLabel:COMPANION_NAME});
+}
+function useHealItem(){
+  if(state.gameOver || state.healItems<=0) return;
+  state.healItems--;
+  const healed = Math.min(state.playerMaxHP-state.playerHP, HEAL_AMOUNT);
+  state.playerHP += healed;
+  log(`Você usa uma Solução-Tampão e recupera ${healed} de vida.`, 'l-hit');
+  renderHud(); renderArena();
+  enemyTurn(false);
+}
+
+function enemyTurn(freeFromAnalyze){
+  const e = ENEMIES[state.target];
+  setTimeout(()=>{
+    if(state.gameOver) return;
+    const dmg = Math.max(1, e.atk + rand(-2,4));
+    state.playerHP -= dmg;
+    log(`${e.name} contra-ataca e causa ${dmg} de dano${freeFromAnalyze?' (você baixou a guarda para analisar).':''}.`, 'l-dmg');
+    if(state.playerHP<=0){ state.playerHP=0; loseBattle(); return; }
+    renderHud(); renderArena();
+  }, 350);
+}
+
+function defeatCurrentTarget(){
+  const idx = state.target;
+  const e = ENEMIES[idx];
+  state.materials[e.weak] += DROP_AMOUNT;
+  const wasDefeated = state.defeated.has(idx);
+  state.defeated.add(idx);
+  const isProgress = (idx === state.level-1) && !wasDefeated;
+
+  if(!isProgress){
+    log(`Treino concluído contra ${e.name}: +${DROP_AMOUNT} ${ELEMENTS[e.weak].icon} ${e.weak}.`, 'l-sys');
+    selectTargetSilently(idx);
+    renderHud(); renderArena(); renderMaterialsRow('mat-row-lab');
+    return;
+  }
+
+  log(`${e.name} foi derrotado! +${DROP_AMOUNT} ${ELEMENTS[e.weak].icon} ${e.weak}.`, 'l-sys');
+  if(idx<10 && state.healItems<HEAL_MAX){
+    state.healItems++;
+    log(`Você recebe uma Solução-Tampão (${state.healItems}/${HEAL_MAX}).`, 'l-sys');
+  }
+
+  if(idx===9){
+    state.secretsUnlocked = true;
+    state.awaitingSecrets = true;
+    state.level = 11;
+    renderHud();
+    selectTargetSilently(farmableIndices()[0] ?? 9);
+    showOverlay('🔓','Receitas lendárias reveladas!','Você derrotou o Rei dos Sais. Água-régia e Fusão Termítica surgiram no laboratório — forje as duas para abrir os quatro níveis extras.', 'Ir para o laboratório', ()=>setView('lab'));
+    return;
+  }
+  if(idx===13){
+    state.level = 15;
+    state.playerHP = Math.min(state.playerMaxHP, state.playerHP+15);
+    renderHud();
+    selectTargetSilently(14);
+    showOverlay('⚠️','Os extras foram vencidos!','Só resta o Imperador Alquímico — o inimigo mais forte do laboratório.', 'Continuar');
+    return;
+  }
+  if(idx===14){
+    state.gameOver = true;
+    showOverlay('🏆','Crisol completo!','O Imperador Alquímico se desfaz em pó cristalino. Você dominou as 15 câmaras do laboratório.', 'Jogar novamente');
+    return;
+  }
+  state.level += 1;
+  state.playerHP = Math.min(state.playerMaxHP, state.playerHP+15);
+  renderHud();
+  selectTargetSilently(state.level-1);
+  showOverlay('⚗️','Vitória!', `Você avança para o nível ${state.level}. Vida parcialmente restaurada (+15).`, 'Continuar');
+}
+
+function loseBattle(){
+  log('Você foi derrotado.', 'l-dmg');
+  state.gameOver = true;
+  showOverlay('💥','Você foi derrotado', `${ENEMIES[state.target].name} provou ser forte demais desta vez. Volte ao laboratório, junte materiais e forje novas armas.`, 'Recomeçar');
+}
+
+/* ===================== OVERLAY ===================== */
+function showOverlay(emoji,title,text,btnLabel,cb){
+  document.getElementById('overlay-emoji').textContent = emoji;
+  document.getElementById('overlay-title').textContent = title;
+  document.getElementById('overlay-text').textContent = text;
+  document.getElementById('overlay-btn').textContent = btnLabel;
+  overlayMode = (btnLabel==='Recomeçar' || btnLabel==='Jogar novamente') ? 'restart' : 'continue';
+  overlayCallback = cb || null;
+  document.getElementById('overlay').classList.add('show');
+}
+function overlayAction(){
+  document.getElementById('overlay').classList.remove('show');
+  if(overlayCallback){ const cb=overlayCallback; overlayCallback=null; cb(); return; }
+  if(overlayMode==='restart') resetGame(); else renderArena();
+}
+
+function resetGame(){
+  state.crafted = new Set([0]);
+  state.materials = Object.fromEntries(ELEMENT_KEYS.map(k=>[k,10]));
+  state.level=1; state.playerHP=100; state.playerMaxHP=100;
+  state.defeated.clear();
+  state.target=0; state.enemyHP=ENEMIES[0].hp;
+  state.weaknessRevealed=false; state.secretsUnlocked=false; state.awaitingSecrets=false;
+  state.healItems=0; state.gameOver=false;
+  clearLog();
+  renderHud(); renderCatalog(); renderInventory(); renderMaterialsRow('mat-row-lab'); renderArena();
+  log('Novo cadinho, novo laboratório. Vítreo e o Béquer estão prontos. Boa sorte.', 'l-sys');
+}
+
+/* ===================== INIT ===================== */
+function init(){
+  renderHud();
+  renderFilterRow();
+  renderCatalog();
+  renderInventory();
+  renderMaterialsRow('mat-row-lab');
+  renderArena();
+  log('Bem-vindo ao Crisol. Você começa com o Béquer, 10 unidades de cada material e Vítreo ao seu lado. Vença guardiões para coletar materiais, itens de cura e evoluir seu companheiro.', 'l-sys');
+}
+init();
+</script>
+</body>
+</html>
